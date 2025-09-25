@@ -1,4 +1,4 @@
-import pool from '../config/database.js';
+import { pool } from '../config/database.js';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
@@ -38,7 +38,7 @@ const generateFileHash = (content) => {
 const runMigrations = async () => {
   try {
     log.title('[+] Starting database migrations...\n');
-
+    log.info(`[+] db credentials: ${process.env.DATABASE_URL}`);
     await pool.query(`
       CREATE TABLE IF NOT EXISTS migrations (
         id SERIAL PRIMARY KEY,
