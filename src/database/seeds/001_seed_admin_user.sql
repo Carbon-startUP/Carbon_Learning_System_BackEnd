@@ -11,7 +11,7 @@ INSERT INTO users (
 SELECT 
     'admin',
     'admin@carbon.com',
-    '$argon2id$v=19$m=65536,t=3,p=4$qwertyuiopasdfghjklzxcvbnm1234567890$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ',
+    '$argon2id$v=19$m=65536,t=3,p=4$5R8xRnWD7Uc8pwvqAc596w$pd5PJa9kKoQzS00xw08MgGqnJWOTBWmJ9w2ZEMCQML4',
     'System',
     'Administrator',
     ut.id

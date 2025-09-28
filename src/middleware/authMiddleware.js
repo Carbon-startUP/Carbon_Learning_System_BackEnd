@@ -1,4 +1,4 @@
-import authService from '../services/authService.js';
+import userService from '../services/userService.js';
 import { HTTP_STATUS } from '../utils/constants.js';
 import { AppError } from './errorMiddleware.js';
 
@@ -12,7 +12,7 @@ export const authenticate = async (req, res, next) => {
       return next(new AppError('Access token required', HTTP_STATUS.UNAUTHORIZED));
     }
 
-    const user = await authService.validateSession(sessionToken);
+    const user = await userService.validateSession(sessionToken);
     
     if (!user) {
       return next(new AppError('Invalid or expired session', HTTP_STATUS.UNAUTHORIZED));

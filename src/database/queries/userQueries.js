@@ -8,7 +8,7 @@
 //// $6: sortOrder (text)
 //// $7: limit (integer)
 //// $8: offset (integer)
-const authqueries = {
+const userqueries = {
   userQueries: {
     createUser: `--sql
     INSERT INTO users (username, password_hash, first_name, last_name, phone, user_type_id, created_by)
@@ -84,6 +84,9 @@ const authqueries = {
   `,
     getSession: `--sql
     SELECT * FROM user_sessions WHERE session_token = $1
+  `,
+    getUserSessions: `--sql
+    SELECT * FROM user_sessions WHERE user_id = $1
   `,
     getAllSessions: `--sql
     SELECT * FROM user_sessions 
@@ -165,4 +168,4 @@ const authqueries = {
   },
 }
 
-export default authqueries;
+export default userqueries;

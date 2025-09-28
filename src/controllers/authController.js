@@ -1,13 +1,13 @@
 import { asyncHandler } from '../middleware/errorMiddleware.js';
 import { HTTP_STATUS } from '../utils/constants.js';
-import authService from '../services/authService.js';
+import userService from '../services/userService.js';
 
 class AuthController {
   // POST /api/auth/login
   login = asyncHandler(async (req, res) => {
     const { username, password } = req.body;
 
-    const result = await authService.login(username, password);
+    const result = await userService.login(username, password);
 
     res.status(HTTP_STATUS.OK).json({
       success: true,
@@ -26,7 +26,7 @@ class AuthController {
                         req.cookies?.sessionToken;
 
     if (sessionToken) {
-      await authService.destroySession(sessionToken);
+      await userService.destroySession(sessionToken);
     }
 
     res.status(HTTP_STATUS.OK).json({
@@ -61,7 +61,7 @@ class AuthController {
     const userId = req.user.id;
     const profileData = req.body;
 
-    const updatedUser = await authService.updateUserProfile(userId, profileData);
+    const updatedUser = await userService.updateUserProfile(userId, profileData);
 
     res.status(HTTP_STATUS.OK).json({
       success: true,
@@ -77,7 +77,7 @@ class AuthController {
   // changePassword = asyncHandler(async (req, res) => {
   //   const userId = req.user.id;
   //   const { currentPassword, newPassword } = req.body;
-  //   await authService.changePassword(userId, currentPassword, newPassword);
+  //   await userService.changePassword(userId, currentPassword, newPassword);
   //   res.status(HTTP_STATUS.OK).json({
   //     success: true,
   //     message: 'Password changed successfully'
@@ -89,7 +89,7 @@ class AuthController {
     const userData = req.body;
     const createdBy = req.user.id;
 
-    const newUser = await authService.createUser(userData, createdBy);
+    const newUser = await userService.createUser(userData, createdBy);
 
     res.status(HTTP_STATUS.CREATED).json({
       success: true,
@@ -100,27 +100,25 @@ class AuthController {
     });
   });
 
-  // GET /api/auth/users - Admin only
+  // GET /api/users - Admin only
   getAllUsers = asyncHandler(async (req, res) => {
-    const { page, limit, sortBy, sortOrder, search, userType, isActive, createdFrom } = req.query;
+    const { page = 1, limit = 10, sortBy = 'created_at', sortOrder = 'desc', search, userType, isActive, createdFrom } = req.query;
 
-    //TODO: implement filtering logic
-    // eslint-disable-next-line no-unused-vars
     const filters = {
-      search,
-      userType,
-      isActive,
-      createdFrom
+      search: search || null,
+      userType: userType ? parseInt(userType) : undefined,
+      isActive: isActive !== undefined ? isActive === 'true' : undefined,
+      createdFrom: createdFrom || null
     };
 
     const pagination = {
+      page: parseInt(page),
+      limit: parseInt(limit),
       sortBy,
-      sortOrder,
-      limit,
-      page 
+      sortOrder
     };
 
-    const result = await authService.getAllUsers(pagination);
+    const result = await userService.getAllUsers(filters, pagination);
 
     res.status(HTTP_STATUS.OK).json({
       success: true,
@@ -128,11 +126,18 @@ class AuthController {
     });
   });
 
-  // GET /api/auth/users/:id - Admin only
+  // GET /api/users/:id - Admin only
   getUserById = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
-    const user = await authService.getUserById(id);
+    const user = await userService.getUserById(id);
+
+    if (!user) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
 
     res.status(HTTP_STATUS.OK).json({
       success: true,
@@ -142,13 +147,13 @@ class AuthController {
     });
   });
 
-  // PATCH /api/auth/users/:id - Admin only
+  // PATCH /api/users/:id - Admin only
   updateUser = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const userData = req.body;
     const updatedBy = req.user.id;
 
-    const updatedUser = await authService.updateUser(id, userData, updatedBy);
+    const updatedUser = await userService.updateUser(id, userData, updatedBy);
 
     res.status(HTTP_STATUS.OK).json({
       success: true,
@@ -159,12 +164,12 @@ class AuthController {
     });
   });
 
-  // DELETE /api/auth/users/:id - Admin only
+  // DELETE /api/users/:id - Admin only
   deleteUser = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const deletedBy = req.user.id;
 
-    await authService.deleteUser(id, deletedBy);
+    await userService.deleteUser(id, deletedBy);
 
     res.status(HTTP_STATUS.OK).json({
       success: true,
@@ -174,7 +179,7 @@ class AuthController {
 
   // GET /api/auth/user-types - Admin only
   getUserTypes = asyncHandler(async (req, res) => {
-    const userTypes = await authService.getUserTypes();
+    const userTypes = await userService.getUserTypes();
 
     res.status(HTTP_STATUS.OK).json({
       success: true,
@@ -184,37 +189,63 @@ class AuthController {
     });
   });
 
-  // TODO: implement bulk user creation
-  // POST /api/auth/users/bulk - Admin only
-  // createBulkUsers = asyncHandler(async (req, res) => {
-  //   const { users } = req.body;
-  //   const createdBy = req.user.id;
-  //   const result = await authService.createBulkUsers(users, createdBy);
-  //   res.status(HTTP_STATUS.CREATED).json({
-  //     success: true,
-  //     message: `Successfully created ${result.success.length} users`,
-  //     data: {
-  //       success: result.success,
-  //       errors: result.errors
-  //     }
-  //   });
-  // });
+  // POST /api/users/bulk - Admin only
+  createBulkUsers = asyncHandler(async (req, res) => {
+    const { users } = req.body;
+    const createdBy = req.user.id;
 
-  // TODO: implement bulk user deletion
-  // DELETE /api/auth/users/bulk - Admin only
-  // deleteBulkUsers = asyncHandler(async (req, res) => {
-  //   const { ids } = req.body;
-  //   const deletedBy = req.user.id;
-  //   const result = await authService.deleteBulkUsers(ids, deletedBy);
-  //   res.status(HTTP_STATUS.OK).json({
-  //     success: true,
-  //     message: `Successfully deleted ${result.success.length} users`,
-  //     data: {
-  //       success: result.success,
-  //       errors: result.errors
-  //     }
-  //   });
-  // });
+    if (!Array.isArray(users) || users.length === 0) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        success: false,
+        message: 'Users array is required and cannot be empty'
+      });
+    }
+
+    const result = await userService.createBulkUsers(users, createdBy);
+
+    res.status(HTTP_STATUS.CREATED).json({
+      success: true,
+      message: `Successfully created ${result.success.length} users`,
+      data: {
+        success: result.success,
+        errors: result.errors,
+        summary: {
+          total: users.length,
+          successful: result.success.length,
+          failed: result.errors.length
+        }
+      }
+    });
+  });
+
+  // DELETE /api/users/bulk - Admin only
+  deleteBulkUsers = asyncHandler(async (req, res) => {
+    const { ids } = req.body;
+    const deletedBy = req.user.id;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        success: false,
+        message: 'User IDs array is required and cannot be empty'
+      });
+    }
+
+    const result = await userService.deleteBulkUsers(ids, deletedBy);
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      message: `Successfully deleted ${result.success.length} users`,
+      data: {
+        success: result.success,
+        errors: result.errors,
+        summary: {
+          total: ids.length,
+          successful: result.success.length,
+          failed: result.errors.length
+        }
+      }
+    });
+  });
 }
 
 export default new AuthController();
