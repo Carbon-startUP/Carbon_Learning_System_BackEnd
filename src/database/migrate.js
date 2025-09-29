@@ -113,6 +113,7 @@ const runMigrations = async () => {
     }
 
     log.title('\n[+] All migrations completed successfully!');
+    process.exit(0);
   } catch (error) {
     log.error(`Migration failed: ${error.message}`);
     console.error(error);
