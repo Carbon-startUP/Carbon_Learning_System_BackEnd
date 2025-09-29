@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import authRoutes from './authRoutes.js';
 import userRoutes from './userRoutes.js';
+import schoolRoutes from './schoolRoutes.js';
 
 const router = Router();
 
@@ -19,5 +20,8 @@ router.use('/auth', authRoutes);
 
 // User routes
 router.use('/users', userRoutes);
+
+// School routes
+router.use('/schools', schoolRoutes);
 
 export default router;
