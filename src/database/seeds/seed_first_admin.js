@@ -14,7 +14,6 @@ const insert_first_admin = async () => {
 
   await pool.query(query, [ username, password_hash, full_name, 1]);
   console.log("First admin user inserted.");
-  
 }
 
 insert_first_admin();

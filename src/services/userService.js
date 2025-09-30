@@ -98,6 +98,22 @@ class UserService {
     }
   }
 
+  // Helper method to split full name for display
+  splitFullName(fullName) {
+    if (!fullName) return { firstName: '', lastName: '' };
+    
+    const nameParts = fullName.trim().split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+    
+    return { firstName, lastName };
+  }
+
+  // Helper method to combine first and last name
+  combineFullName(firstName, lastName) {
+    return `${firstName || ''} ${lastName || ''}`.trim();
+  }
+
   // Login user
   async login(username, password) {
     // Get user
@@ -119,12 +135,16 @@ class UserService {
     // Create session
     const sessionToken = await this.createSession(user.id);
 
+    // Split full name for display
+    const { firstName, lastName } = this.splitFullName(user.full_name);
+
     return {
       user: {
         id: user.id,
         username: user.username,
-        firstName: user.first_name,
-        lastName: user.last_name,
+        fullName: user.full_name,
+        firstName: firstName,
+        lastName: lastName,
         userType: user.user_type_name,
         permissions: user.permissions
       },
@@ -134,10 +154,10 @@ class UserService {
 
   // Create user (admin only)
   async createUser(userData, createdBy) {
-    const { username, password, firstName, lastName, phone, userType } = userData;
+    const { username, password, fullName, userType } = userData;
 
     // Check if username already exists
-   const existingUser = await pool.query(userqueries.authSecurityQueries.checkUserExists, [username]);
+    const existingUser = await pool.query(userqueries.authSecurityQueries.checkUserExists, [username]);
 
     if (existingUser.rows.length > 0) {
       throw new AppError('Username already exists', HTTP_STATUS.CONFLICT);
@@ -154,7 +174,7 @@ class UserService {
     const passwordHash = await this.hashPassword(password);
 
     // Create user
-    const result = await pool.query(userqueries.userQueries.createUser, [username, passwordHash, firstName, lastName, phone, userTypeResult.rows[0].id, createdBy]);
+    const result = await pool.query(userqueries.userQueries.createUser, [username, passwordHash, fullName, userTypeResult.rows[0].id, createdBy]);
 
     return result.rows[0];
   }
@@ -215,9 +235,8 @@ class UserService {
   }
 
   // Update user
-  // eslint-disable-next-line no-unused-vars
-  async updateUser(id, userData, updatedBy) {
-    const { username, firstName, lastName, phone, userType } = userData;
+  async updateUser(id, userData) {
+    const { username, fullName, userType } = userData;
 
     // Check if user exists
     const existingUser = await pool.query(userqueries.userQueries.getUserById, [id]);
@@ -245,9 +264,7 @@ class UserService {
 
     await pool.query(userqueries.userQueries.updateUser, [
       username || existingUser.rows[0].username,
-      firstName || existingUser.rows[0].first_name,
-      lastName || existingUser.rows[0].last_name,
-      phone || existingUser.rows[0].phone,
+      fullName || existingUser.rows[0].full_name,
       userTypeId,
       id
     ]);
@@ -281,11 +298,12 @@ class UserService {
         const userData = usersData[i];
         
         // Validate required fields
-        if (!userData.username || !userData.password || !userData.firstName || !userData.lastName || !userData.userType) {
+        const hasFullName = userData.fullName || (userData.firstName && userData.lastName);
+        if (!userData.username || !userData.password || !hasFullName || !userData.userType) {
           results.errors.push({
             row: i + 1,
             data: userData,
-            error: 'Missing required fields (username, password, firstName, lastName, userType)'
+            error: 'Missing required fields (username, password, fullName or firstName+lastName, userType)'
           });
           continue;
         }
@@ -334,18 +352,28 @@ class UserService {
 
   // Update user profile (for self-update)
   async updateUserProfile(userId, profileData) {
-    const { firstName, lastName, phone } = profileData;
+    const { firstName, lastName, fullName } = profileData;
     
     const existingUser = await pool.query(userqueries.userQueries.getUserById, [userId]);
     if (existingUser.rows.length === 0) {
       throw new AppError('User not found', HTTP_STATUS.NOT_FOUND);
     }
 
+    // Handle full name update
+    let updatedFullName = existingUser.rows[0].full_name;
+    if (fullName) {
+      updatedFullName = fullName;
+    } else if (firstName || lastName) {
+      const { firstName: currentFirstName, lastName: currentLastName } = this.splitFullName(existingUser.rows[0].full_name);
+      updatedFullName = this.combineFullName(
+        firstName || currentFirstName,
+        lastName || currentLastName
+      );
+    }
+
     await pool.query(userqueries.userQueries.updateUser, [
       existingUser.rows[0].username, // Keep same username
-      firstName || existingUser.rows[0].first_name,
-      lastName || existingUser.rows[0].last_name,
-      phone || existingUser.rows[0].phone,
+      updatedFullName,
       existingUser.rows[0].user_type_id, // Keep same user type
       userId
     ]);
